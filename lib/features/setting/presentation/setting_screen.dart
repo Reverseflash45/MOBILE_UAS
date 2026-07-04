@@ -3,12 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../../core/theme/theme_provider.dart';
+import '../../../core/Provider/settings_provider.dart';
 
 class SettingScreen extends ConsumerWidget {
   const SettingScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isNotifEnabled = ref.watch(settingsProvider);
+    final themeMode = ref.watch(themeProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pengaturan'),
@@ -27,10 +32,35 @@ class SettingScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Card(
+            child: SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              secondary: const Icon(Icons.notifications_active, color: Colors.indigo),
+              title: const Text('Notifikasi Push'),
+              subtitle: const Text('Tampilkan pop-up saat ada tiket baru'),
+              value: isNotifEnabled,
+              onChanged: (value) {
+                ref.read(settingsProvider.notifier).toggleNotifications(value);
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              secondary: const Icon(Icons.dark_mode, color: Colors.indigo),
+              title: const Text('Mode Gelap'),
+              value: themeMode == ThemeMode.dark,
+              onChanged: (value) {
+                ref.read(themeProvider.notifier).toggleTheme();
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               leading: const Icon(Icons.notifications, color: Colors.indigo),
-              title: const Text('Notifikasi'),
+              title: const Text('Riwayat Notifikasi'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.pushNamed(context, AppRouter.notificationRoute),
             ),

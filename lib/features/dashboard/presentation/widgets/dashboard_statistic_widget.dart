@@ -1,61 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/dashboard_repository.dart';
 
-class DashboardStatisticWidget extends StatefulWidget {
-  const DashboardStatisticWidget({super.key});
-
-  @override
-  State<DashboardStatisticWidget> createState() => _DashboardStatisticWidgetState();
-}
-
-class _DashboardStatisticWidgetState extends State<DashboardStatisticWidget> {
-  final _supabase = Supabase.instance.client;
-  Map<String, int> _stats = {
-    'total': 0,
-    'open': 0,
-    'assigned': 0,
-    'resolved': 0,
-    'closed': 0,
-  };
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchStatistics();
-  }
-
-  Future<void> _fetchStatistics() async {
-    try {
-      final response = await _supabase.from('tickets').select('status');
-      final tickets = List<Map<String, dynamic>>.from(response);
-
-      int open = 0, assigned = 0, resolved = 0, closed = 0;
-
-      for (var t in tickets) {
-        final status = t['status']?.toString().toLowerCase();
-        if (status == 'open') open++;
-        else if (status == 'assigned' || status == 'in_progress') assigned++;
-        else if (status == 'resolved') resolved++;
-        else if (status == 'closed') closed++;
-      }
-
-      if (mounted) {
-        setState(() {
-          _stats = {
-            'total': tickets.length,
-            'open': open,
-            'assigned': assigned,
-            'resolved': resolved,
-            'closed': closed,
-          };
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+class DashboardStatisticWidget extends ConsumerWidget {
+  final String? helpdeskId;
+  
+  const DashboardStatisticWidget({super.key, this.helpdeskId});
 
   Widget _buildStatCard(String title, int count, Color color) {
     return Expanded(
@@ -87,43 +37,52 @@ class _DashboardStatisticWidgetState extends State<DashboardStatisticWidget> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsFuture = ref.watch(dashboardRepositoryProvider).getTicketStatistics(helpdeskId);
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Statistik Tiket',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Row(
+    return FutureBuilder<Map<String, int>>(
+      future: statsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        final stats = snapshot.data ?? {'total': 0, 'open': 0, 'assign': 0, 'in progress': 0, 'closed': 0};
+
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildStatCard('Total', _stats['total']!, Colors.blueGrey),
-              const SizedBox(width: 8),
-              _buildStatCard('Open', _stats['open']!, Colors.red),
-              const SizedBox(width: 8),
-              _buildStatCard('Assigned', _stats['assigned']!, Colors.orange),
+              const Text(
+                'Statistik Tiket',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _buildStatCard('Total', stats['total'] ?? 0, Colors.blueGrey),
+                  const SizedBox(width: 8),
+                  _buildStatCard('Open', stats['open'] ?? 0, Colors.red),
+                  const SizedBox(width: 8),
+                  _buildStatCard('Assigned', stats['assign'] ?? 0, Colors.orange),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildStatCard('In Progress', stats['in progress'] ?? 0, Colors.green),
+                  const SizedBox(width: 8),
+                  _buildStatCard('Closed', stats['closed'] ?? 0, Colors.grey),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildStatCard('Resolved', _stats['resolved']!, Colors.green),
-              const SizedBox(width: 8),
-              _buildStatCard('Closed', _stats['closed']!, Colors.grey),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -1,63 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data/comment_repository.dart';
 
-class CommentSection extends StatefulWidget {
+class CommentSection extends ConsumerStatefulWidget {
   final String ticketId;
 
   const CommentSection({super.key, required this.ticketId});
 
   @override
-  State<CommentSection> createState() => _CommentSectionState();
+  ConsumerState<CommentSection> createState() => _CommentSectionState();
 }
 
-class _CommentSectionState extends State<CommentSection> {
-  final SupabaseClient _supabase = Supabase.instance.client;
+class _CommentSectionState extends ConsumerState<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
-  List<Map<String, dynamic>> _comments = [];
-  bool _isLoading = true;
+  final String _currentUserId = Supabase.instance.client.auth.currentUser!.id;
 
   @override
-  void initState() {
-    super.initState();
-    _fetchComments();
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
   }
 
-  Future<void> _fetchComments() async {
-    try {
-      final response = await _supabase
-          .from('comments')
-          .select('*, profiles(full_name, role)')
-          .eq('ticket_id', widget.ticketId)
-          .order('created_at', ascending: true);
-
-      setState(() {
-        _comments = List<Map<String, dynamic>>.from(response);
-      });
-    } catch (_) {
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _sendComment() async {
-    if (_commentController.text.isEmpty) return;
-
-    final text = _commentController.text;
-    _commentController.clear();
+  void _submitComment() async {
+    if (_commentController.text.trim().isEmpty) return;
 
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return;
-
-      await _supabase.from('comments').insert({
-        'ticket_id': widget.ticketId,
-        'user_id': user.id,
-        'content': text,
-      });
-
-      _fetchComments();
+      await ref.read(commentRepositoryProvider).addComment(
+        widget.ticketId,
+        _currentUserId,
+        _commentController.text.trim(),
+      );
+      _commentController.clear();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -69,6 +43,8 @@ class _CommentSectionState extends State<CommentSection> {
 
   @override
   Widget build(BuildContext context) {
+    final commentsStream = ref.watch(commentRepositoryProvider).getCommentsStream(widget.ticketId);
+
     return Column(
       children: [
         const Padding(
@@ -79,28 +55,45 @@ class _CommentSectionState extends State<CommentSection> {
           ),
         ),
         Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  itemCount: _comments.length,
-                  itemBuilder: (context, index) {
-                    final comment = _comments[index];
-                    final profile = comment['profiles'] ?? {};
-                    final senderName = profile['full_name'] ?? 'User';
-                    
-                    return Card(
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: commentsStream,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              
+              final comments = snapshot.data ?? [];
+              
+              if (comments.isEmpty) {
+                return const Center(child: Text('Belum ada komentar.'));
+              }
+              
+              return ListView.builder(
+                padding: const EdgeInsets.all(8.0),
+                itemCount: comments.length,
+                itemBuilder: (context, index) {
+                  final comment = comments[index];
+                  final isMe = comment['user_id'] == _currentUserId;
+                  
+                  return Align(
+                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      child: ListTile(
-                        title: Text(
-                          senderName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isMe ? Colors.blue.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isMe ? Colors.blue.withOpacity(0.5) : Colors.grey.withOpacity(0.5),
                         ),
-                        subtitle: Text(comment['content'] ?? ''),
                       ),
-                    );
-                  },
-                ),
+                      child: Text(comment['content']?.toString() ?? ''),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
         Padding(
           padding: const EdgeInsets.all(8.0),
@@ -117,7 +110,7 @@ class _CommentSectionState extends State<CommentSection> {
               ),
               IconButton(
                 icon: const Icon(Icons.send, color: Colors.blue),
-                onPressed: _sendComment,
+                onPressed: _submitComment,
               ),
             ],
           ),

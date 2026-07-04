@@ -1,4 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -6,7 +8,32 @@ class NotificationService {
   NotificationService._internal();
 
   final SupabaseClient _supabase = Supabase.instance.client;
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   RealtimeChannel? _notificationChannel;
+
+  Future<void> _showLocalNotification(String title, String body) async {
+    // Cek dulu settingan user dari memori HP
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool('notifications_enabled') ?? true;
+
+    // Kalau dimatiin (false), fungsi ini langsung berhenti dan pop-up gak akan muncul
+    if (!isEnabled) return;
+
+    const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'ticket_updates_channel',
+      'Ticket Updates',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+    
+    await _localNotifications.show(
+      DateTime.now().millisecond,
+      title,
+      body,
+      platformChannelSpecifics,
+    );
+  }
 
   Future<void> initializeNotificationListener({
     required String currentUserId,
@@ -27,7 +54,12 @@ class NotificationService {
           ),
           callback: (PostgresChangePayload payload) {
             if (payload.newRecord.isNotEmpty) {
-              onNewNotification(payload.newRecord);
+              final newNotif = payload.newRecord;
+              onNewNotification(newNotif);
+              _showLocalNotification(
+                newNotif['title']?.toString() ?? 'Pemberitahuan Baru',
+                newNotif['message']?.toString() ?? 'Ada pembaruan pada tiket Anda.',
+              );
             }
           },
         );

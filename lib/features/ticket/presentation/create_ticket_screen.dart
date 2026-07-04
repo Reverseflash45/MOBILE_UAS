@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../data/ticket_repository.dart';
+import '../../../core/services/storage_service.dart';
 
 class CreateTicketScreen extends ConsumerStatefulWidget {
   const CreateTicketScreen({super.key});
@@ -13,7 +16,19 @@ class CreateTicketScreen extends ConsumerStatefulWidget {
 class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  File? _selectedFile;
   bool _isLoading = false;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (pickedFile != null) {
+      setState(() {
+        _selectedFile = File(pickedFile.path);
+      });
+    }
+  }
 
   Future<void> _submitTicket() async {
     if (_titleController.text.trim().isEmpty || _descriptionController.text.trim().isEmpty) {
@@ -25,10 +40,18 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
 
     setState(() => _isLoading = true);
     try {
+      String? attachmentUrl;
+      
+      if (_selectedFile != null) {
+        attachmentUrl = await StorageService().uploadFile(_selectedFile!, 'ticket_attachments');
+      }
+
       await ref.read(ticketRepositoryProvider).createTicket(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
+        attachmentUrl: attachmentUrl,
       );
+      
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tiket berhasil dibuat')),
@@ -82,6 +105,16 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _pickImage,
+                icon: const Icon(Icons.attach_file),
+                label: Text(_selectedFile != null ? 'Ganti Lampiran' : 'Tambah Lampiran (Gambar)'),
+              ),
+              if (_selectedFile != null) ...[
+                const SizedBox(height: 8),
+                Text('File: ${_selectedFile!.path.split('/').last}', style: const TextStyle(fontSize: 12, color: Colors.green)),
+              ],
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _isLoading ? null : _submitTicket,
