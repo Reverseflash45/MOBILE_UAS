@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../auth/data/auth_repository.dart';
+import 'widgets/dashboard_statistic_widget.dart';
 
 class UserDashboardScreen extends ConsumerWidget {
   const UserDashboardScreen({super.key});
@@ -13,6 +14,14 @@ class UserDashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Dashboard Pengguna'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => Navigator.pushNamed(context, AppRouter.profileRoute),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.pushNamed(context, AppRouter.settingRoute),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -26,6 +35,8 @@ class UserDashboardScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
+          const DashboardStatisticWidget(),
+          const SizedBox(height: 16),
           Card(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

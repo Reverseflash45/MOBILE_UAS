@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../core/router/app_router.dart';
 import '../../auth/data/auth_repository.dart';
 
@@ -12,16 +11,6 @@ class HelpdeskDashboardScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard Helpdesk'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authRepositoryProvider).signOut();
-              if (!context.mounted) return;
-              Navigator.pushReplacementNamed(context, AppRouter.loginRoute);
-            },
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
@@ -34,6 +23,28 @@ class HelpdeskDashboardScreen extends ConsumerWidget {
               subtitle: const Text('Lihat tiket yang ditugaskan kepada Anda'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.pushNamed(context, AppRouter.listTicketRoute),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              leading: const Icon(Icons.person, size: 40, color: Colors.indigo),
+              title: const Text('Profil Saya', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Lihat informasi akun helpdesk'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.pushNamed(context, AppRouter.profileRoute),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              leading: const Icon(Icons.settings, size: 40, color: Colors.indigo),
+              title: const Text('Pengaturan', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Ubah tema dan logout aplikasi'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.pushNamed(context, AppRouter.settingRoute),
             ),
           ),
         ],
