@@ -13,7 +13,7 @@ CREATE TABLE public.tickets (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   title text NOT NULL,
   description text NOT NULL,
-  status text DEFAULT 'open'::text,
+  status text DEFAULT 'open'::text CHECK (status = ANY (ARRAY['open'::text, 'assign'::text, 'in progress'::text, 'close'::text])),
   user_id uuid NOT NULL,
   helpdesk_id uuid,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
@@ -37,7 +37,7 @@ CREATE TABLE public.comments (
 CREATE TABLE public.ticket_histories (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   ticket_id uuid NOT NULL,
-  status text NOT NULL,
+  status text NOT NULL CHECK (status = ANY (ARRAY['open'::text, 'assign'::text, 'in progress'::text, 'close'::text])),
   description text,
   changed_by uuid,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
@@ -45,4 +45,17 @@ CREATE TABLE public.ticket_histories (
   CONSTRAINT ticket_histories_pkey PRIMARY KEY (id),
   CONSTRAINT ticket_histories_ticket_id_fkey FOREIGN KEY (ticket_id) REFERENCES public.tickets(id),
   CONSTRAINT ticket_histories_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  ticket_id uuid,
+  title text NOT NULL,
+  message text NOT NULL,
+  type text NOT NULL DEFAULT 'general'::text,
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT notifications_ticket_id_fkey FOREIGN KEY (ticket_id) REFERENCES public.tickets(id)
 );

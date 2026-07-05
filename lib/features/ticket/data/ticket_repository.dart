@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/network/supabase_client.dart';
+import '../../../core/services/notification_service.dart';
 
 final ticketRepositoryProvider = Provider<TicketRepository>((ref) {
   return TicketRepository(SupabaseClientConfig.client);
@@ -9,6 +10,8 @@ final ticketRepositoryProvider = Provider<TicketRepository>((ref) {
 
 class TicketRepository {
   final SupabaseClient _client;
+  final NotificationService _notificationService =
+      NotificationService();
 
   TicketRepository(this._client);
 
@@ -29,7 +32,11 @@ class TicketRepository {
         .eq('id', _currentUserId)
         .single();
 
-    return response['role']?.toString().toLowerCase() ?? '';
+    return response['role']
+            ?.toString()
+            .trim()
+            .toLowerCase() ??
+        '';
   }
 
   Future<void> _logHistory({
@@ -45,6 +52,60 @@ class TicketRepository {
       'description': description,
       'changed_by': _currentUserId,
     });
+  }
+
+  Future<List<String>> _getAdminIds() async {
+    final response = await _client
+        .from('profiles')
+        .select('id, role');
+
+    final profiles =
+        List<Map<String, dynamic>>.from(response);
+
+    final adminIds = <String>[];
+
+    for (final profile in profiles) {
+      final role = profile['role']
+              ?.toString()
+              .trim()
+              .toLowerCase() ??
+          '';
+
+      final id = profile['id']?.toString();
+
+      if (role == 'admin' &&
+          id != null &&
+          id.isNotEmpty) {
+        adminIds.add(id);
+      }
+    }
+
+    if (adminIds.isEmpty) {
+      throw Exception(
+        'Tidak ada akun admin yang ditemukan di tabel profiles',
+      );
+    }
+
+    return adminIds;
+  }
+
+  Future<void> _notifyAdmins({
+    required String ticketId,
+    required String title,
+    required String message,
+    required String type,
+  }) async {
+    final adminIds = await _getAdminIds();
+
+    for (final adminId in adminIds) {
+      await _notificationService.createNotification(
+        userId: adminId,
+        ticketId: ticketId,
+        title: title,
+        message: message,
+        type: type,
+      );
+    }
   }
 
   Future<List<Map<String, dynamic>>> getTicketsPaginated(
@@ -107,13 +168,47 @@ class TicketRepository {
       action: 'CREATED',
       description: 'Tiket baru dibuat oleh pengguna',
     );
+
+    await _notificationService.createNotification(
+      userId: _currentUserId,
+      ticketId: ticketId,
+      title: 'Tiket Berhasil Dibuat',
+      message:
+          'Tiket "$title" berhasil dibuat dan sedang menunggu admin.',
+      type: 'ticket_created',
+    );
+
+    await _notifyAdmins(
+      ticketId: ticketId,
+      title: 'Tiket Baru Masuk',
+      message:
+          'Pengguna membuat tiket baru berjudul "$title".',
+      type: 'ticket_new',
+    );
   }
 
   Future<void> acceptTicket(String ticketId) async {
     final role = await _getCurrentUserRole();
 
     if (role != 'admin') {
-      throw Exception('Hanya admin yang dapat menerima tiket');
+      throw Exception(
+        'Hanya admin yang dapat menerima tiket',
+      );
+    }
+
+    final ticket = await _client
+        .from('tickets')
+        .select('user_id, title, status')
+        .eq('id', ticketId)
+        .single();
+
+    final currentStatus =
+        ticket['status']?.toString().trim().toLowerCase();
+
+    if (currentStatus != 'open') {
+      throw Exception(
+        'Tiket sudah diproses atau statusnya bukan open',
+      );
     }
 
     final updatedTickets = await _client
@@ -127,7 +222,7 @@ class TicketRepository {
 
     if (updatedTickets.isEmpty) {
       throw Exception(
-        'Tiket tidak ditemukan atau statusnya bukan open',
+        'Tiket tidak ditemukan atau gagal diterima',
       );
     }
 
@@ -136,6 +231,15 @@ class TicketRepository {
       status: 'assign',
       action: 'ACCEPTED',
       description: 'Tiket diterima oleh admin',
+    );
+
+    await _notificationService.createNotification(
+      userId: ticket['user_id'].toString(),
+      ticketId: ticketId,
+      title: 'Tiket Diterima Admin',
+      message:
+          'Tiket "${ticket['title']}" telah diterima oleh admin.',
+      type: 'ticket_accepted',
     );
   }
 
@@ -151,15 +255,43 @@ class TicketRepository {
       );
     }
 
+    final ticket = await _client
+        .from('tickets')
+        .select('user_id, title, status')
+        .eq('id', ticketId)
+        .single();
+
+    final currentStatus =
+        ticket['status']?.toString().trim().toLowerCase();
+
+    if (currentStatus != 'assign') {
+      throw Exception(
+        'Tiket belum diterima admin atau sudah ditugaskan',
+      );
+    }
+
     final helpdeskProfile = await _client
         .from('profiles')
         .select('id, full_name, role')
         .eq('id', helpdeskId)
-        .eq('role', 'helpdesk')
         .maybeSingle();
 
     if (helpdeskProfile == null) {
-      throw Exception('Akun helpdesk tidak ditemukan');
+      throw Exception(
+        'Akun helpdesk tidak ditemukan',
+      );
+    }
+
+    final helpdeskRole = helpdeskProfile['role']
+            ?.toString()
+            .trim()
+            .toLowerCase() ??
+        '';
+
+    if (helpdeskRole != 'helpdesk') {
+      throw Exception(
+        'Akun yang dipilih bukan akun helpdesk',
+      );
     }
 
     final updatedTickets = await _client
@@ -174,18 +306,38 @@ class TicketRepository {
 
     if (updatedTickets.isEmpty) {
       throw Exception(
-        'Tiket tidak ditemukan atau belum diterima admin',
+        'Tiket gagal ditugaskan ke helpdesk',
       );
     }
 
     final helpdeskName =
-        helpdeskProfile['full_name']?.toString() ?? 'Helpdesk';
+        helpdeskProfile['full_name']?.toString() ??
+            'Helpdesk';
 
     await _logHistory(
       ticketId: ticketId,
       status: 'in progress',
       action: 'ASSIGNED',
-      description: 'Tiket ditugaskan kepada $helpdeskName',
+      description:
+          'Tiket ditugaskan kepada $helpdeskName',
+    );
+
+    await _notificationService.createNotification(
+      userId: helpdeskId,
+      ticketId: ticketId,
+      title: 'Tiket Baru Ditugaskan',
+      message:
+          'Anda mendapat tiket "${ticket['title']}" untuk ditangani.',
+      type: 'ticket_assigned',
+    );
+
+    await _notificationService.createNotification(
+      userId: ticket['user_id'].toString(),
+      ticketId: ticketId,
+      title: 'Tiket Sedang Diproses',
+      message:
+          'Tiket "${ticket['title']}" telah diteruskan ke helpdesk.',
+      type: 'ticket_progress',
     );
   }
 
@@ -195,6 +347,32 @@ class TicketRepository {
     if (role != 'helpdesk') {
       throw Exception(
         'Hanya helpdesk yang dapat menyelesaikan tiket',
+      );
+    }
+
+    final ticket = await _client
+        .from('tickets')
+        .select(
+          'user_id, title, status, assigned_to',
+        )
+        .eq('id', ticketId)
+        .single();
+
+    final assignedTo =
+        ticket['assigned_to']?.toString();
+
+    final currentStatus =
+        ticket['status']?.toString().trim().toLowerCase();
+
+    if (assignedTo != _currentUserId) {
+      throw Exception(
+        'Tiket ini bukan tugas akun helpdesk Anda',
+      );
+    }
+
+    if (currentStatus != 'in progress') {
+      throw Exception(
+        'Tiket sudah selesai atau belum ditugaskan',
       );
     }
 
@@ -210,7 +388,7 @@ class TicketRepository {
 
     if (updatedTickets.isEmpty) {
       throw Exception(
-        'Tiket bukan tugas akun helpdesk ini atau sudah selesai',
+        'Tiket gagal diselesaikan',
       );
     }
 
@@ -218,7 +396,25 @@ class TicketRepository {
       ticketId: ticketId,
       status: 'close',
       action: 'CLOSED',
-      description: 'Tiket telah diselesaikan oleh helpdesk',
+      description:
+          'Tiket telah diselesaikan oleh helpdesk',
+    );
+
+    await _notificationService.createNotification(
+      userId: ticket['user_id'].toString(),
+      ticketId: ticketId,
+      title: 'Tiket Selesai',
+      message:
+          'Tiket "${ticket['title']}" telah diselesaikan oleh helpdesk.',
+      type: 'ticket_closed',
+    );
+
+    await _notifyAdmins(
+      ticketId: ticketId,
+      title: 'Tiket Diselesaikan',
+      message:
+          'Helpdesk telah menyelesaikan tiket "${ticket['title']}".',
+      type: 'ticket_closed_admin',
     );
   }
 
@@ -226,7 +422,9 @@ class TicketRepository {
     final role = await _getCurrentUserRole();
 
     if (role != 'admin') {
-      throw Exception('Hanya admin yang dapat menghapus tiket');
+      throw Exception(
+        'Hanya admin yang dapat menghapus tiket',
+      );
     }
 
     await _client
@@ -235,17 +433,29 @@ class TicketRepository {
         .eq('id', ticketId);
   }
 
-  Future<List<Map<String, dynamic>>> getHelpdeskUsers() async {
+  Future<List<Map<String, dynamic>>>
+      getHelpdeskUsers() async {
     final response = await _client
         .from('profiles')
         .select('id, full_name, role')
-        .eq('role', 'helpdesk')
         .order('full_name', ascending: true);
 
-    return List<Map<String, dynamic>>.from(response);
+    final profiles =
+        List<Map<String, dynamic>>.from(response);
+
+    return profiles.where((profile) {
+      final role = profile['role']
+              ?.toString()
+              .trim()
+              .toLowerCase() ??
+          '';
+
+      return role == 'helpdesk';
+    }).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getTicketHistories(
+  Future<List<Map<String, dynamic>>>
+      getTicketHistories(
     String ticketId,
   ) async {
     final response = await _client
