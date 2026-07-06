@@ -6,6 +6,8 @@ CREATE TABLE public.profiles (
   full_name text,
   role text DEFAULT 'user'::text,
   name text DEFAULT full_name,
+  email text,
+  is_active boolean NOT NULL DEFAULT true,
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
@@ -13,7 +15,7 @@ CREATE TABLE public.tickets (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   title text NOT NULL,
   description text NOT NULL,
-  status text DEFAULT 'open'::text CHECK (status = ANY (ARRAY['open'::text, 'assign'::text, 'in progress'::text, 'close'::text])),
+  status text DEFAULT 'open'::text CHECK (status = ANY (ARRAY['open'::text, 'assign'::text, 'assigned'::text, 'in progress'::text, 'close'::text])),
   user_id uuid NOT NULL,
   helpdesk_id uuid,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),

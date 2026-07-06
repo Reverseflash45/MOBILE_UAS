@@ -64,7 +64,9 @@ class _TicketDetailPageState
 
       final freshTicket = await ref
           .read(ticketRepositoryProvider)
-          .getTicketById(_ticket['id'].toString());
+          .getTicketById(
+            _ticket['id'].toString(),
+          );
 
       if (!mounted) return;
 
@@ -75,7 +77,9 @@ class _TicketDetailPageState
                 .toLowerCase() ??
             '';
 
-        _ticket = Map<String, dynamic>.from(freshTicket);
+        _ticket =
+            Map<String, dynamic>.from(freshTicket);
+
         _isLoading = false;
       });
     } catch (e) {
@@ -87,7 +91,10 @@ class _TicketDetailPageState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal memuat detail tiket: $e'),
+          content: Text(
+            'Gagal memuat detail tiket: $e',
+          ),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -97,19 +104,25 @@ class _TicketDetailPageState
     try {
       final freshTicket = await ref
           .read(ticketRepositoryProvider)
-          .getTicketById(_ticket['id'].toString());
+          .getTicketById(
+            _ticket['id'].toString(),
+          );
 
       if (!mounted) return;
 
       setState(() {
-        _ticket = Map<String, dynamic>.from(freshTicket);
+        _ticket =
+            Map<String, dynamic>.from(freshTicket);
       });
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal memperbarui tiket: $e'),
+          content: Text(
+            'Gagal memperbarui tiket: $e',
+          ),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -132,14 +145,19 @@ class _TicketDetailPageState
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successMessage)),
+        SnackBar(
+          content: Text(successMessage),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Proses gagal: $e'),
+          content: Text(
+            'Proses gagal: $e',
+          ),
+          backgroundColor: Colors.red,
         ),
       );
     } finally {
@@ -155,8 +173,11 @@ class _TicketDetailPageState
     await _runAction(
       action: () => ref
           .read(ticketRepositoryProvider)
-          .acceptTicket(_ticket['id'].toString()),
-      successMessage: 'Tiket berhasil diterima admin',
+          .acceptTicket(
+            _ticket['id'].toString(),
+          ),
+      successMessage:
+          'Tiket berhasil diterima admin',
     );
   }
 
@@ -185,27 +206,69 @@ class _TicketDetailPageState
     }
   }
 
+  Future<void> _startTicket() async {
+    final ticketId =
+        _ticket['id'].toString();
+
+    await _runAction(
+      action: () async {
+        await _supabase
+            .from('tickets')
+            .update({
+              'status': 'in progress',
+            })
+            .eq('id', ticketId);
+
+        await _supabase
+            .from('ticket_histories')
+            .insert({
+              'ticket_id': ticketId,
+              'status': 'in progress',
+              'description':
+                  'Tiket mulai ditangani oleh helpdesk',
+              'changed_by': _currentUserId,
+              'action':
+                  'Mulai penanganan tiket',
+            });
+      },
+      successMessage:
+          'Tiket mulai dikerjakan',
+    );
+  }
+
   Future<void> _completeTicket() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Selesaikan Tiket'),
+          title: const Text(
+            'Selesaikan Tiket',
+          ),
           content: const Text(
             'Pastikan masalah pengguna sudah selesai ditangani.',
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext, false);
+                Navigator.pop(
+                  dialogContext,
+                  false,
+                );
               },
-              child: const Text('Batal'),
+              child: const Text(
+                'Batal',
+              ),
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(dialogContext, true);
+                Navigator.pop(
+                  dialogContext,
+                  true,
+                );
               },
-              child: const Text('Selesaikan'),
+              child: const Text(
+                'Selesaikan',
+              ),
             ),
           ],
         );
@@ -217,8 +280,11 @@ class _TicketDetailPageState
     await _runAction(
       action: () => ref
           .read(ticketRepositoryProvider)
-          .closeTicket(_ticket['id'].toString()),
-      successMessage: 'Tiket berhasil diselesaikan',
+          .closeTicket(
+            _ticket['id'].toString(),
+          ),
+      successMessage:
+          'Tiket berhasil diselesaikan',
     );
   }
 
@@ -227,24 +293,36 @@ class _TicketDetailPageState
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Hapus Tiket'),
+          title: const Text(
+            'Hapus Tiket',
+          ),
           content: const Text(
             'Tiket dan seluruh riwayat terkait akan dihapus. Lanjutkan?',
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext, false);
+                Navigator.pop(
+                  dialogContext,
+                  false,
+                );
               },
-              child: const Text('Batal'),
+              child: const Text(
+                'Batal',
+              ),
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext, true);
+                Navigator.pop(
+                  dialogContext,
+                  true,
+                );
               },
               child: const Text(
                 'Hapus',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(
+                  color: Colors.red,
+                ),
               ),
             ),
           ],
@@ -261,13 +339,17 @@ class _TicketDetailPageState
     try {
       await ref
           .read(ticketRepositoryProvider)
-          .deleteTicket(_ticket['id'].toString());
+          .deleteTicket(
+            _ticket['id'].toString(),
+          );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tiket berhasil dihapus'),
+          content: Text(
+            'Tiket berhasil dihapus',
+          ),
         ),
       );
 
@@ -277,7 +359,10 @@ class _TicketDetailPageState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal menghapus tiket: $e'),
+          content: Text(
+            'Gagal menghapus tiket: $e',
+          ),
+          backgroundColor: Colors.red,
         ),
       );
     } finally {
@@ -290,11 +375,17 @@ class _TicketDetailPageState
   }
 
   String get _status {
-    return _ticket['status']
+    final rawStatus = _ticket['status']
             ?.toString()
             .trim()
             .toLowerCase() ??
         'open';
+
+    if (rawStatus == 'assigned') {
+      return 'assign';
+    }
+
+    return rawStatus;
   }
 
   bool get _isAssignedToCurrentHelpdesk {
@@ -306,13 +397,15 @@ class _TicketDetailPageState
         assignedTo == _currentUserId;
   }
 
-  String _getStatusLabel(String status) {
+  String _getStatusLabel(
+    String status,
+  ) {
     switch (status) {
       case 'open':
         return 'MENUNGGU ADMIN';
 
       case 'assign':
-        return 'DITERIMA ADMIN';
+        return 'DITUGASKAN';
 
       case 'in progress':
         return 'DIPROSES HELPDESK';
@@ -325,7 +418,9 @@ class _TicketDetailPageState
     }
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(
+    String status,
+  ) {
     switch (status) {
       case 'open':
         return Colors.blue;
@@ -345,19 +440,23 @@ class _TicketDetailPageState
   }
 
   Widget _buildTicketCard() {
-    final statusColor = _getStatusColor(_status);
+    final statusColor =
+        _getStatusColor(_status);
 
     final attachmentUrl =
         _ticket['attachment_url']?.toString();
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding:
+            const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 const Expanded(
                   child: Text(
@@ -369,40 +468,53 @@ class _TicketDetailPageState
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
+                  padding:
+                      const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
+                    color: statusColor
+                        .withOpacity(0.12),
+                    borderRadius:
+                        BorderRadius.circular(20),
                     border: Border.all(
                       color: statusColor,
                     ),
                   ),
                   child: Text(
-                    _getStatusLabel(_status),
+                    _getStatusLabel(
+                      _status,
+                    ),
                     style: TextStyle(
                       color: statusColor,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                          FontWeight.bold,
                       fontSize: 12,
                     ),
                   ),
                 ),
               ],
             ),
-            const Divider(height: 32),
+            const Divider(
+              height: 32,
+            ),
             Text(
-              _ticket['title']?.toString() ??
+              _ticket['title']
+                      ?.toString() ??
                   'Tanpa Judul',
               style: const TextStyle(
                 fontSize: 21,
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(
+              height: 14,
+            ),
             Text(
-              _ticket['description']?.toString() ??
+              _ticket['description']
+                      ?.toString() ??
                   'Tidak ada deskripsi',
               style: const TextStyle(
                 fontSize: 16,
@@ -411,16 +523,24 @@ class _TicketDetailPageState
             ),
             if (attachmentUrl != null &&
                 attachmentUrl.isNotEmpty) ...[
-              const SizedBox(height: 20),
+              const SizedBox(
+                height: 20,
+              ),
               const Text(
                 'Lampiran',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontWeight:
+                      FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(
+                height: 8,
+              ),
               ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius:
+                    BorderRadius.circular(
+                  10,
+                ),
                 child: Image.network(
                   attachmentUrl,
                   width: double.infinity,
@@ -431,14 +551,16 @@ class _TicketDetailPageState
                     child,
                     loadingProgress,
                   ) {
-                    if (loadingProgress == null) {
+                    if (loadingProgress ==
+                        null) {
                       return child;
                     }
 
                     return const SizedBox(
                       height: 220,
                       child: Center(
-                        child: CircularProgressIndicator(),
+                        child:
+                            CircularProgressIndicator(),
                       ),
                     );
                   },
@@ -450,8 +572,10 @@ class _TicketDetailPageState
                     return Container(
                       height: 120,
                       width: double.infinity,
-                      alignment: Alignment.center,
-                      color: Colors.grey.shade200,
+                      alignment:
+                          Alignment.center,
+                      color:
+                          Colors.grey.shade200,
                       child: const Text(
                         'Lampiran tidak dapat ditampilkan',
                       ),
@@ -475,28 +599,61 @@ class _TicketDetailPageState
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          icon: const Icon(Icons.check_circle_outline),
+          icon: const Icon(
+            Icons.check_circle_outline,
+          ),
           label: Text(
             _isProcessing
                 ? 'Memproses...'
                 : 'Terima Tiket',
           ),
-          onPressed:
-              _isProcessing ? null : _acceptTicket,
+          onPressed: _isProcessing
+              ? null
+              : _acceptTicket,
         ),
       );
     }
 
-    if (_status == 'assign') {
+    if (_status == 'assign' &&
+        _ticket['assigned_to'] == null) {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          icon: const Icon(Icons.assignment_ind),
+          icon: const Icon(
+            Icons.assignment_ind,
+          ),
           label: const Text(
             'Tugaskan ke Helpdesk',
           ),
-          onPressed:
-              _isProcessing ? null : _assignTicket,
+          onPressed: _isProcessing
+              ? null
+              : _assignTicket,
+        ),
+      );
+    }
+
+    if (_status == 'assign' &&
+        _ticket['assigned_to'] != null) {
+      return const Card(
+        child: Padding(
+          padding:
+              EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(
+                Icons.assignment_ind,
+                color: Colors.orange,
+              ),
+              SizedBox(
+                width: 12,
+              ),
+              Expanded(
+                child: Text(
+                  'Tiket sudah ditugaskan kepada helpdesk.',
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -504,14 +661,17 @@ class _TicketDetailPageState
     if (_status == 'in progress') {
       return const Card(
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding:
+              EdgeInsets.all(16),
           child: Row(
             children: [
               Icon(
                 Icons.support_agent,
                 color: Colors.purple,
               ),
-              SizedBox(width: 12),
+              SizedBox(
+                width: 12,
+              ),
               Expanded(
                 child: Text(
                   'Tiket sedang ditangani oleh helpdesk.',
@@ -526,19 +686,25 @@ class _TicketDetailPageState
     if (_status == 'close') {
       return const Card(
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding:
+              EdgeInsets.all(16),
           child: Row(
             children: [
               Icon(
                 Icons.check_circle,
                 color: Colors.green,
               ),
-              SizedBox(width: 12),
-              Text(
-                'Tiket telah selesai',
-                style: TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
+              SizedBox(
+                width: 12,
+              ),
+              Expanded(
+                child: Text(
+                  'Tiket telah selesai',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -558,14 +724,17 @@ class _TicketDetailPageState
     if (!_isAssignedToCurrentHelpdesk) {
       return const Card(
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding:
+              EdgeInsets.all(16),
           child: Row(
             children: [
               Icon(
                 Icons.warning_amber,
                 color: Colors.orange,
               ),
-              SizedBox(width: 12),
+              SizedBox(
+                width: 12,
+              ),
               Expanded(
                 child: Text(
                   'Tiket ini tidak ditugaskan kepada akun helpdesk Anda.',
@@ -577,22 +746,62 @@ class _TicketDetailPageState
       );
     }
 
+    if (_status == 'assign') {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          icon: const Icon(
+            Icons.play_arrow,
+          ),
+          label: Text(
+            _isProcessing
+                ? 'Memproses...'
+                : 'Mulai Kerjakan',
+          ),
+          style:
+              ElevatedButton.styleFrom(
+            backgroundColor:
+                Colors.blue,
+            foregroundColor:
+                Colors.white,
+            padding:
+                const EdgeInsets.symmetric(
+              vertical: 14,
+            ),
+          ),
+          onPressed: _isProcessing
+              ? null
+              : _startTicket,
+        ),
+      );
+    }
+
     if (_status == 'in progress') {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          icon: const Icon(Icons.task_alt),
+          icon: const Icon(
+            Icons.task_alt,
+          ),
           label: Text(
             _isProcessing
                 ? 'Memproses...'
                 : 'Selesaikan Tiket',
           ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
+          style:
+              ElevatedButton.styleFrom(
+            backgroundColor:
+                Colors.green,
+            foregroundColor:
+                Colors.white,
+            padding:
+                const EdgeInsets.symmetric(
+              vertical: 14,
+            ),
           ),
-          onPressed:
-              _isProcessing ? null : _completeTicket,
+          onPressed: _isProcessing
+              ? null
+              : _completeTicket,
         ),
       );
     }
@@ -600,19 +809,25 @@ class _TicketDetailPageState
     if (_status == 'close') {
       return const Card(
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding:
+              EdgeInsets.all(16),
           child: Row(
             children: [
               Icon(
                 Icons.check_circle,
                 color: Colors.green,
               ),
-              SizedBox(width: 12),
-              Text(
-                'Tiket telah selesai',
-                style: TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
+              SizedBox(
+                width: 12,
+              ),
+              Expanded(
+                child: Text(
+                  'Tiket telah selesai ditangani.',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -637,45 +852,61 @@ class _TicketDetailPageState
       case 'open':
         message =
             'Tiket sedang menunggu pemeriksaan admin.';
-        icon = Icons.hourglass_empty;
+        icon =
+            Icons.hourglass_empty;
         color = Colors.blue;
         break;
 
       case 'assign':
         message =
-            'Tiket sudah diterima oleh admin.';
-        icon = Icons.assignment_turned_in;
+            'Tiket sudah diterima dan ditugaskan kepada helpdesk.';
+        icon =
+            Icons.assignment_turned_in;
         color = Colors.orange;
         break;
 
       case 'in progress':
         message =
             'Tiket sedang ditangani oleh helpdesk.';
-        icon = Icons.support_agent;
+        icon =
+            Icons.support_agent;
         color = Colors.purple;
         break;
 
       case 'close':
         message =
             'Tiket telah selesai ditangani.';
-        icon = Icons.check_circle;
+        icon =
+            Icons.check_circle;
         color = Colors.green;
         break;
 
       default:
-        message = 'Status tiket tidak diketahui.';
-        icon = Icons.info_outline;
+        message =
+            'Status tiket tidak diketahui.';
+        icon =
+            Icons.info_outline;
         color = Colors.grey;
     }
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding:
+            const EdgeInsets.all(16),
         child: Row(
           children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
+            Icon(
+              icon,
+              color: color,
+            ),
+            const SizedBox(
+              width: 12,
+            ),
+            Expanded(
+              child: Text(
+                message,
+              ),
+            ),
           ],
         ),
       ),
@@ -683,11 +914,14 @@ class _TicketDetailPageState
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     if (_isLoading) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child:
+              CircularProgressIndicator(),
         ),
       );
     }
@@ -701,16 +935,22 @@ class _TicketDetailPageState
         ),
         actions: [
           IconButton(
-            tooltip: 'Tracking Tiket',
-            icon: const Icon(Icons.timeline),
+            tooltip:
+                'Tracking Tiket',
+            icon: const Icon(
+              Icons.timeline,
+            ),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) {
+                  builder: (
+                    context,
+                  ) {
                     return TicketTrackingPage(
                       ticketId:
-                          _ticket['id'].toString(),
+                          _ticket['id']
+                              .toString(),
                     );
                   },
                 ),
@@ -719,13 +959,16 @@ class _TicketDetailPageState
           ),
           if (_userRole == 'admin')
             IconButton(
-              tooltip: 'Hapus Tiket',
+              tooltip:
+                  'Hapus Tiket',
               icon: const Icon(
                 Icons.delete_outline,
                 color: Colors.red,
               ),
               onPressed:
-                  _isProcessing ? null : _deleteTicket,
+                  _isProcessing
+                      ? null
+                      : _deleteTicket,
             ),
         ],
       ),
@@ -733,26 +976,35 @@ class _TicketDetailPageState
         children: [
           Expanded(
             flex: 3,
-            child: RefreshIndicator(
-              onRefresh: _refreshTicket,
+            child:
+                RefreshIndicator(
+              onRefresh:
+                  _refreshTicket,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding:
+                    const EdgeInsets
+                        .all(16),
                 children: [
                   _buildTicketCard(),
-                  const SizedBox(height: 16),
+                  const SizedBox(
+                    height: 16,
+                  ),
                   _buildAdminAction(),
                   _buildHelpdeskAction(),
                   _buildUserStatus(),
-                  const SizedBox(height: 8),
+                  const SizedBox(
+                    height: 8,
+                  ),
                 ],
               ),
             ),
           ),
-
-          const Divider(height: 1),
-
+          const Divider(
+            height: 1,
+          ),
           const Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding:
+                EdgeInsets.fromLTRB(
               16,
               12,
               16,
@@ -761,25 +1013,30 @@ class _TicketDetailPageState
             child: Row(
               children: [
                 Icon(
-                  Icons.chat_bubble_outline,
+                  Icons
+                      .chat_bubble_outline,
                   size: 20,
                 ),
-                SizedBox(width: 8),
+                SizedBox(
+                  width: 8,
+                ),
                 Text(
                   'Komentar & Diskusi',
                   style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
               ],
             ),
           ),
-
           Expanded(
             flex: 2,
             child: CommentSection(
-              ticketId: _ticket['id'].toString(),
+              ticketId:
+                  _ticket['id']
+                      .toString(),
             ),
           ),
         ],
