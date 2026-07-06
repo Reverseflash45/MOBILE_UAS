@@ -1,26 +1,68 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-final dashboardRepositoryProvider = Provider((ref) => DashboardRepository());
+final dashboardRepositoryProvider =
+    Provider<DashboardRepository>((ref) {
+  return DashboardRepository();
+});
 
 class DashboardRepository {
-  final _supabase = Supabase.instance.client;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
-  Future<Map<String, int>> getTicketStatistics(String? helpdeskId) async {
-    dynamic query = _supabase.from('tickets').select();
-    
-    if (helpdeskId != null) {
-      query = _supabase.from('tickets').select().eq('assigned_to', helpdeskId);
+  Future<Map<String, int>> getTicketStatistics({
+    required String role,
+    required String userId,
+  }) async {
+    dynamic query = _supabase
+        .from('tickets')
+        .select('status');
+
+    final normalizedRole = role.trim().toLowerCase();
+
+    if (normalizedRole == 'user') {
+      query = query.eq('user_id', userId);
+    } else if (normalizedRole == 'helpdesk') {
+      query = query.eq('assigned_to', userId);
     }
-    
-    final response = await query;
-    final tickets = List<Map<String, dynamic>>.from(response);
 
-    int total = tickets.length;
-    int open = tickets.where((t) => t['status'] == 'open').length;
-    int assign = tickets.where((t) => t['status'] == 'assign').length;
-    int inProgress = tickets.where((t) => t['status'] == 'in progress').length;
-    int closed = tickets.where((t) => t['status'] == 'close').length;
+    final response = await query;
+
+    final tickets =
+        List<Map<String, dynamic>>.from(response);
+
+    final total = tickets.length;
+
+    final open = tickets.where((ticket) {
+      return ticket['status']
+              ?.toString()
+              .trim()
+              .toLowerCase() ==
+          'open';
+    }).length;
+
+    final assign = tickets.where((ticket) {
+      return ticket['status']
+              ?.toString()
+              .trim()
+              .toLowerCase() ==
+          'assign';
+    }).length;
+
+    final inProgress = tickets.where((ticket) {
+      return ticket['status']
+              ?.toString()
+              .trim()
+              .toLowerCase() ==
+          'in progress';
+    }).length;
+
+    final closed = tickets.where((ticket) {
+      return ticket['status']
+              ?.toString()
+              .trim()
+              .toLowerCase() ==
+          'close';
+    }).length;
 
     return {
       'total': total,
