@@ -15,7 +15,7 @@ import '../../features/ticket/presentation/list_ticket_screen.dart';
 import '../../features/tickets/presentation/pages/ticket_detail_page.dart';
 import '../../features/tickets/presentation/pages/ticket_tracking_page.dart';
 
-import '../../features/users/presentation/pages/user_management_page.dart';
+import '../../features/manage_users/presentation/user_list_screen.dart';
 import '../../features/manage_users/presentation/add_user_screen.dart';
 
 import '../../features/notifications/presentation/pages/notification_page.dart';
@@ -31,30 +31,50 @@ class AppRouter {
 
   static const String adminDashboardRoute =
       '/admin-dashboard';
+
   static const String helpdeskDashboardRoute =
       '/helpdesk-dashboard';
+
   static const String userDashboardRoute =
       '/user-dashboard';
 
-  static const String createTicketRoute = '/create-ticket';
-  static const String listTicketRoute = '/list-ticket';
-  static const String detailTicketRoute = '/detail-ticket';
+  static const String createTicketRoute =
+      '/create-ticket';
+
+  static const String listTicketRoute =
+      '/list-ticket';
+
+  static const String detailTicketRoute =
+      '/detail-ticket';
+
   static const String trackingTicketRoute =
       '/tracking-ticket';
 
-  static const String userListRoute = '/user-list';
-  static const String addUserRoute = '/add-user';
-  static const String notificationRoute = '/notification';
-  static const String profileRoute = '/profile';
-  static const String settingRoute = '/setting';
+  static const String userListRoute =
+      '/user-list';
+
+  static const String addUserRoute =
+      '/add-user';
+
+  static const String notificationRoute =
+      '/notification';
+
+  static const String profileRoute =
+      '/profile';
+
+  static const String settingRoute =
+      '/setting';
 
   static Map<String, WidgetBuilder> get routes {
     return {
-      splashRoute: (context) => const SplashScreen(),
+      splashRoute: (context) =>
+          const SplashScreen(),
 
-      loginRoute: (context) => const LoginScreen(),
+      loginRoute: (context) =>
+          const LoginScreen(),
 
-      registerRoute: (context) => const RegisterScreen(),
+      registerRoute: (context) =>
+          const RegisterScreen(),
 
       resetPasswordRoute: (context) =>
           const ForgotPasswordPage(),
@@ -76,9 +96,12 @@ class AppRouter {
 
       detailTicketRoute: (context) {
         final arguments =
-            ModalRoute.of(context)?.settings.arguments;
+            ModalRoute.of(context)
+                ?.settings
+                .arguments;
 
-        if (arguments is! Map<String, dynamic>) {
+        if (arguments
+            is! Map<String, dynamic>) {
           return const Scaffold(
             body: Center(
               child: Text(
@@ -95,17 +118,22 @@ class AppRouter {
 
       trackingTicketRoute: (context) {
         final arguments =
-            ModalRoute.of(context)?.settings.arguments;
+            ModalRoute.of(context)
+                ?.settings
+                .arguments;
 
         String? ticketId;
 
         if (arguments is String) {
           ticketId = arguments;
-        } else if (arguments is Map<String, dynamic>) {
-          ticketId = arguments['id']?.toString();
+        } else if (arguments
+            is Map<String, dynamic>) {
+          ticketId =
+              arguments['id']?.toString();
         }
 
-        if (ticketId == null || ticketId.isEmpty) {
+        if (ticketId == null ||
+            ticketId.isEmpty) {
           return const Scaffold(
             body: Center(
               child: Text(
@@ -121,7 +149,7 @@ class AppRouter {
       },
 
       userListRoute: (context) =>
-          const UserManagementPage(),
+          const UserListScreen(),
 
       addUserRoute: (context) =>
           const AddUserScreen(),
